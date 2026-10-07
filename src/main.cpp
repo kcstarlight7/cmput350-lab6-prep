@@ -88,9 +88,25 @@ void ZoomApp::updateViewAfterResize() {
     //      Color::Black in render()
     // ====== ====== ======
 
+    // world.x / window.x = % of window world will take up
+    // if (world.x / world.y) > (window.x / window.y) { 
+    //      
+
+    float vp_x = 1.0f;
+    float vp_y = 1.0f;
+    float worldRatio = mWorldSize.x / mWorldSize.y;
+    float windowRatio = static_cast<float>(mWindow.getSize().x) / static_cast<float>(mWindow.getSize().y);
+
+    if (windowRatio != worldRatio) {
+        vp_y = vp_x * (1 / worldRatio);
+        vp_x = vp_y * worldRatio;
+    }
+
+    sf::FloatRect newViewport({0, 0}, {vp_x, vp_y});
+
     // Calculate newViewport based on aspect ratios of window and of mWorldSize. Then:
-    // mWorldViewDefault.setViewport(newViewport);
-    // mWorldViewZoomed.setViewport(newViewport);
+    mWorldViewDefault.setViewport(newViewport);
+    mWorldViewZoomed.setViewport(newViewport);
 }
 
 // updateZoomView sets the center of mWorldViewZoomed such that the zoomed view would have the
@@ -115,9 +131,11 @@ void ZoomApp::updateZoomView(sf::Vector2i mousePos) {
 void ZoomApp::render() {
     mWindow.clear(sf::Color::Black);
     if (!mIsZooming) {
-        // TODO: If the user is not zooming in, use the default world view.
+        // If the user is not zooming in, use the default world view.
+        mWindow.setView(mWorldViewDefault);
     } else {
-        // TODO: If the user is zooming in, use the zoomed world view.
+        // If the user is zooming in, use the zoomed world view.
+        mWindow.setView(mWorldViewZoomed);
     }
     mWindow.draw(*mWaldoSprite);
     mWindow.display();
