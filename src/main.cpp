@@ -88,21 +88,23 @@ void ZoomApp::updateViewAfterResize() {
     //      Color::Black in render()
     // ====== ====== ======
 
-    // world.x / window.x = % of window world will take up
-    // if (world.x / world.y) > (window.x / window.y) { 
-    //      
-
-    float vp_x = 1.0f;
-    float vp_y = 1.0f;
+    float locX = 0.0f;
+    float locY = 0.0f;
+    float vpSizeX = 1.0f;
+    float vpSizeY = 1.0f;
     float worldRatio = mWorldSize.x / mWorldSize.y;
     float windowRatio = static_cast<float>(mWindow.getSize().x) / static_cast<float>(mWindow.getSize().y);
+    float scalar = std::min(mWindow.getSize().x / mWorldSize.x, mWindow.getSize().y / mWorldSize.y);
 
-    if (windowRatio != worldRatio) {
-        vp_y = vp_x * (1 / worldRatio);
-        vp_x = vp_y * worldRatio;
+    vpSizeX = mWorldSize.x / mWindow.getSize().x * scalar;
+    vpSizeY = mWorldSize.y / mWindow.getSize().y * scalar;
+
+    if (worldRatio != windowRatio) {
+        locX = (1.0f - vpSizeX) / 2;
+        locY = (1.0f - vpSizeY) / 2;
     }
 
-    sf::FloatRect newViewport({0, 0}, {vp_x, vp_y});
+    sf::FloatRect newViewport({locX, locY}, {vpSizeX, vpSizeY});
 
     // Calculate newViewport based on aspect ratios of window and of mWorldSize. Then:
     mWorldViewDefault.setViewport(newViewport);
@@ -118,7 +120,17 @@ void ZoomApp::updateZoomView(sf::Vector2i mousePos) {
     //     of the window size.
     // (2) Get position of mouse relative to viewport's top-left as percentage of original
     //     viewport.
+    
+    float viewportMouseX =
+        (static_cast<float>(mousePos.x) - mWindow.getViewport(mWorldViewDefault).position.x) / mWindow.getViewport(mWorldViewDefault).size.x;
+    float viewportMouseY =
+        (static_cast<float>(mousePos.y) - mWindow.getViewport(mWorldViewDefault).position.y) / mWindow.getViewport(mWorldViewDefault).size.y;
+
     // (3) Then use that to get pos of mouse relative to world top-left in world units.
+    
+    float worldMouseX = viewportMouseX * mWorldSize.x;
+    float worldMouseY = viewportMouseY * mWorldSize.y;
+
     // (4) Derive the new viewport center (in world units)
     //     which keeps the mouse position pointing at the same thing in
     //     original image but now within a world-space rectangle of size
@@ -126,6 +138,19 @@ void ZoomApp::updateZoomView(sf::Vector2i mousePos) {
     //  HINT: Determine the steps to go from the desired center to the top-left of this new
     //        world-space rectangle, then from this top-left to the thing you're pointing at,
     //        using our above computed vars. Then solve the equation for the desired center.
+    
+    float newVpSizeX = mWorldSize.x / ZOOM_FACTOR;
+    float newVpSizeY = mWorldSize.y / ZOOM_FACTOR;
+
+    // diff from center
+    float offsetX = worldMouseX - (mWorldSize.x / 2);
+    float offsetY = worldMouseY - (mWorldSize.y / 2);
+    
+    // world center + normalized offset converted to new viewport ratio
+    float centerX = (mWorldSize.x / 2) + (offsetX * (ZOOM_FACTOR - 1) / mWorldSize.x * newVpSizeX);
+    float centerY = (mWorldSize.y / 2) + (offsetY * (ZOOM_FACTOR - 1) / mWorldSize.y * newVpSizeY);
+
+    mWorldViewZoomed.setCenter(sf::Vector2f(centerX, centerY));
 }
 
 void ZoomApp::render() {
